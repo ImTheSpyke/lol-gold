@@ -6,7 +6,12 @@ on:
       - main
       - develop
     paths:
-      - "app/**"
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "Dockerfile"
       - ".github/workflows/docker.yml"
 
 permissions:
@@ -29,10 +34,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node 24
+      - name: Set up Node 26
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -49,7 +54,6 @@ jobs:
 
       - name: Detect version and git info
         id: vars
-        working-directory: app
         run: |
           set -euo pipefail
 
@@ -75,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          URL="https://${REGISTRY}/v2/imthespyke-public/lol-graph/manifests/${TAG}"
+          URL="https://${REGISTRY}/v2/imthespyke/lol-graph/manifests/${TAG}"
 
           CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
             -u "${HARBOR_USER}:${HARBOR_PASS}" \
@@ -83,7 +87,7 @@ jobs:
             "$URL")
 
           if [ "$CODE" = "200" ]; then
-            echo "::error::Version ${TAG} already exists in Harbor. Bump version in app/package.json."
+            echo "::error::Version ${TAG} already exists in Harbor. Bump version in package.json."
             exit 1
           fi
 
@@ -97,8 +101,8 @@ jobs:
         id: build_prod
         uses: docker/build-push-action@v7
         with:
-          context: ./app
-          file: ./app/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           provenance: false
           sbom: false
@@ -130,8 +134,8 @@ jobs:
         id: build_dev
         uses: docker/build-push-action@v7
         with:
-          context: ./app
-          file: ./app/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           provenance: false
           sbom: false
