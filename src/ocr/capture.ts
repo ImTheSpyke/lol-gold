@@ -1,5 +1,3 @@
-import type { Region } from '../config/config';
-
 export interface CaptureResult {
   rawRGBA: Buffer;
   width:   number;
@@ -50,5 +48,3 @@ export async function captureWindowRegion(processName: string): Promise<CaptureR
     return null;
   }
 }
-
-export type { Region };

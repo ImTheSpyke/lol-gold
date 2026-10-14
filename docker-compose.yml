@@ -1,11 +1,10 @@
-
 # ── Usage ─────────────────────────────────────────────────────────────────────
 #
 #  Default (app only, remote/existing MariaDB):
-#    docker-compose up -d
+#    docker compose up -d
 #
 #  With local MariaDB container (uses the 'db' profile):
-#    docker-compose --profile db up -d
+#    docker compose --profile db up -d
 #
 #  DB credentials are read from .env — copy .env.example → .env first.
 #  App settings persist in ./data/config.json (auto-created on first run).
@@ -16,16 +15,18 @@ services:
 
   # ── Application ──────────────────────────────────────────────────────────────
   app:
+    image: harbor.imthespyke.fr/imthespyke/lol-graph:latest
     build:
       context:    .
       dockerfile: Dockerfile
     container_name: lol-gold-app
     restart: unless-stopped
     ports:
+      # PORT is the host port; the app always listens on 3000 in the container.
       - "${PORT:-3000}:3000"
     env_file: .env
     environment:
-      PORT:        "${PORT:-3000}"
+      PORT:        "3000"
       DB_HOST:     "${DB_HOST:-127.0.0.1}"
       DB_PORT:     "${DB_PORT:-3306}"
       DB_USER:     "${DB_USER:-lolgold}"

@@ -1,26 +1,16 @@
-import { Worker } from 'worker_threads';
+import type { Worker } from 'worker_threads';
 import { EventEmitter } from 'events';
 import { insertReading } from '../db/queries';
 import { saveConfig, type AppConfig } from '../config/config';
+import type { ReadingMessage, WorkerOutMessage } from '../ocr/messages';
 
-export type SessionState = 'IDLE' | 'RUNNING';
+export type SessionState  = 'IDLE' | 'RUNNING';
+export type WorkerFactory = (config: AppConfig) => Worker;
 
-interface ReadingMessage {
-  type:      'reading';
-  blueGold:  number;
-  redGold:   number;
-  timestamp: number;
-}
-
-interface FailMessage      { type: 'fail'; }
-interface NoProcessMessage { type: 'noProcess'; }
-interface ReadyMessage     { type: 'ready'; }
-interface InitErrorMessage { type: 'initError'; error: string; }
-
-type WorkerMessage = ReadingMessage | FailMessage | NoProcessMessage | ReadyMessage | InitErrorMessage;
-
-const MAX_GOLD_VALUE  = 200;
-const MAX_GOLD_DELTA  = 10;
+// Gold can't plausibly move this much (in k) between two 1Hz readings.
+const MAX_GOLD_DELTA       = 10;
+const AUTO_STOP_FAILS      = 5;
+const WORKER_RESPAWN_DELAY = 2000;
 
 export class SessionManager extends EventEmitter {
   private state: SessionState = 'IDLE';
@@ -30,17 +20,17 @@ export class SessionManager extends EventEmitter {
   private activeGameUUID: string | null = null;
   private lastBlue: number | null = null;
   private lastRed:  number | null = null;
+  private closing = false;
 
-  constructor(worker: Worker, config: AppConfig) {
+  constructor(config: AppConfig, private readonly spawnWorker: WorkerFactory) {
     super();
-    this.worker = worker;
-    this.config = config;
+    this.config         = config;
     this.activeGameUUID = config.activeGameUUID;
-    this.attachWorkerListeners();
+    this.worker         = this.attachWorker(spawnWorker(config));
   }
 
-  private attachWorkerListeners(): void {
-    this.worker.on('message', (msg: WorkerMessage) => {
+  private attachWorker(worker: Worker): Worker {
+    worker.on('message', (msg: WorkerOutMessage) => {
       switch (msg.type) {
         case 'ready':
           console.log('[Session] OCR worker ready');
@@ -61,30 +51,29 @@ export class SessionManager extends EventEmitter {
       }
     });
 
-    this.worker.on('error', (err: Error) => {
+    worker.on('error', (err: Error) => {
       console.error('[Session] Worker error:', err.message);
       this.emit('worker:crash', err);
     });
 
-    this.worker.on('exit', (code: number) => {
-      if (code !== 0 && running) {
-        console.error(`[Session] Worker exited with code ${code}`);
-        this.emit('worker:crash', new Error(`Worker exited with code ${code}`));
-      }
+    worker.on('exit', (code: number) => {
+      if (this.closing || code === 0) return;
+      console.error(`[Session] Worker exited with code ${code}, respawning in ${WORKER_RESPAWN_DELAY}ms`);
+      setTimeout(() => {
+        if (this.closing) return;
+        this.consecutiveFails = 0;
+        this.worker = this.attachWorker(this.spawnWorker(this.config));
+        this.emit('worker:respawned');
+      }, WORKER_RESPAWN_DELAY);
     });
+
+    return worker;
   }
 
   private handleReading(msg: ReadingMessage): void {
     const { blueGold, redGold } = msg;
 
-    // Absolute cap
-    if (blueGold > MAX_GOLD_VALUE || redGold > MAX_GOLD_VALUE) {
-      console.warn(`[Session] Reading rejected — value out of range: blue=${blueGold} red=${redGold}`);
-      this.handleFail();
-      return;
-    }
-
-    // Max delta per tick vs last accepted reading
+    // Reject implausible jumps vs the last accepted reading (OCR misreads)
     if (this.lastBlue !== null && Math.abs(blueGold - this.lastBlue) >= MAX_GOLD_DELTA) {
       console.warn(`[Session] Reading rejected — blue delta too large: ${this.lastBlue} → ${blueGold}`);
       this.handleFail();
@@ -109,19 +98,10 @@ export class SessionManager extends EventEmitter {
     }
 
     if (this.activeGameUUID) {
-      insertReading(
-        this.activeGameUUID,
-        blueGold,
-        redGold,
-        new Date(msg.timestamp)
-      );
+      insertReading(this.activeGameUUID, blueGold, redGold, new Date(msg.timestamp));
     }
 
-    this.emit('session:reading', {
-      blueGold:  msg.blueGold,
-      redGold:   msg.redGold,
-      timestamp: msg.timestamp,
-    });
+    this.emit('session:reading', { blueGold, redGold, timestamp: msg.timestamp });
   }
 
   private handleFail(): void {
@@ -130,45 +110,39 @@ export class SessionManager extends EventEmitter {
     if (
       this.state === 'RUNNING' &&
       this.config.autoStop &&
-      this.consecutiveFails >= 5
+      this.consecutiveFails >= AUTO_STOP_FAILS
     ) {
       this.performAutoStop();
     }
   }
 
   private performAutoStop(): void {
-    const stoppedUUID     = this.activeGameUUID;
-    this.activeGameUUID   = null;
-    this.config.activeGameUUID = null;
-    this.lastBlue = null;
-    this.lastRed  = null;
-    saveConfig(this.config);
+    const stoppedUUID = this.activeGameUUID;
+    this.resetSession(null);
     this.transitionTo('IDLE');
     this.emit('session:autoStopped', { gameUUID: stoppedUUID });
+  }
+
+  private resetSession(gameUUID: string | null): void {
+    this.activeGameUUID        = gameUUID;
+    this.config.activeGameUUID = gameUUID;
+    this.lastBlue              = null;
+    this.lastRed               = null;
+    saveConfig(this.config);
   }
 
   start(gameUUID: string): void {
     if (this.state === 'RUNNING') {
       throw new Error('SESSION_ALREADY_RUNNING');
     }
-    this.activeGameUUID        = gameUUID;
-    this.consecutiveFails      = 0;
-    this.lastBlue              = null;
-    this.lastRed               = null;
-    this.config.activeGameUUID = gameUUID;
-    saveConfig(this.config);
+    this.consecutiveFails = 0;
+    this.resetSession(gameUUID);
     this.transitionTo('RUNNING');
-    this.worker.postMessage({ type: 'setActive', active: true });
   }
 
   stop(): void {
-    this.activeGameUUID        = null;
-    this.config.activeGameUUID = null;
-    this.lastBlue              = null;
-    this.lastRed               = null;
-    saveConfig(this.config);
+    this.resetSession(null);
     this.transitionTo('IDLE');
-    this.worker.postMessage({ type: 'setActive', active: false });
   }
 
   selectGame(gameUUID: string | null): void {
@@ -177,15 +151,15 @@ export class SessionManager extends EventEmitter {
     saveConfig(this.config);
   }
 
-  replaceWorker(newWorker: Worker): void {
-    this.worker = newWorker;
-    this.consecutiveFails = 0;
-    this.attachWorkerListeners();
-  }
-
   updateConfig(config: AppConfig): void {
     this.config = config;
     this.worker.postMessage({ type: 'updateConfig', config });
+  }
+
+  /** Stops the OCR worker for good (no respawn). */
+  async close(): Promise<void> {
+    this.closing = true;
+    await this.worker.terminate();
   }
 
   getState(): SessionState         { return this.state; }
@@ -200,6 +174,3 @@ export class SessionManager extends EventEmitter {
     console.info(`[Session] ${prev} → ${next}`);
   }
 }
-
-// Needed for exit handler in worker listener
-const running = true;

@@ -1,4 +1,4 @@
-import { gaussianSmooth } from '../src/export/png';
+import { gaussianSmooth } from '../src/graph/smoothing';
 
 describe('gaussianSmooth', () => {
   test('returns empty array for empty input', () => {

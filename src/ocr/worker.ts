@@ -1,42 +1,34 @@
 import { parentPort, workerData } from 'worker_threads';
 import { performance } from 'perf_hooks';
 import { captureWindowRegion } from './capture';
-import { preprocessBlueRegion, preprocessRedRegion } from './preprocess';
+import { preprocessRegion } from './preprocess';
 import { parseGoldValue } from './parse';
+import type { WorkerInMessage, WorkerOutMessage } from './messages';
 import type { AppConfig } from '../config/config';
 
 let config: AppConfig = workerData.config as AppConfig;
-let running           = false;
 
-type MainMessage =
-  | { type: 'updateConfig'; config: AppConfig }
-  | { type: 'setActive';    active: boolean }
-  | { type: 'shutdown' };
+function post(msg: WorkerOutMessage): void {
+  parentPort!.postMessage(msg);
+}
 
-export type WorkerOutMessage =
-  | { type: 'ready' }
-  | { type: 'reading'; blueGold: number; redGold: number; timestamp: number }
-  | { type: 'fail' }
-  | { type: 'noProcess' }
-  | { type: 'initError'; error: string };
+// The project compiles to CommonJS, where TypeScript rewrites `import()` into
+// `require()` — which cannot load the ESM-only PaddleOCR packages.
+const esmImport = new Function('m', 'return import(m)') as (m: string) => Promise<unknown>;
 
-parentPort!.on('message', (msg: MainMessage) => {
-  switch (msg.type) {
-    case 'updateConfig': config = msg.config; break;
-    case 'setActive':    break;
-    case 'shutdown':     running = false; break;
-  }
+parentPort!.on('message', (msg: WorkerInMessage) => {
+  if (msg.type === 'updateConfig') config = msg.config;
 });
 
 process.on('uncaughtException', (err) => {
   console.error('[OCR Worker] Uncaught exception:', err);
-  try { parentPort!.postMessage({ type: 'initError', error: String(err) }); } catch {}
+  try { post({ type: 'initError', error: String(err) }); } catch {}
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('[OCR Worker] Unhandled rejection:', reason);
-  try { parentPort!.postMessage({ type: 'initError', error: String(reason) }); } catch {}
+  try { post({ type: 'initError', error: String(reason) }); } catch {}
   process.exit(1);
 });
 
@@ -47,8 +39,8 @@ let ocr:            import('ppu-paddle-ocr').PaddleOcrService | null = null;
 let CanvasProcessor: { prepareCanvas(buf: ArrayBuffer): Promise<any> } | null = null;
 
 async function init(): Promise<void> {
-  const { PaddleOcrService } = await (new Function('m', 'return import(m)'))('ppu-paddle-ocr') as typeof import('ppu-paddle-ocr');
-  const ppuCanvas = await (new Function('m', 'return import(m)'))('ppu-ocv/canvas') as { CanvasProcessor: { prepareCanvas(buf: ArrayBuffer): Promise<any> } };
+  const { PaddleOcrService } = await esmImport('ppu-paddle-ocr') as typeof import('ppu-paddle-ocr');
+  const ppuCanvas = await esmImport('ppu-ocv/canvas') as { CanvasProcessor: { prepareCanvas(buf: ArrayBuffer): Promise<any> } };
   CanvasProcessor = ppuCanvas.CanvasProcessor;
 
   ocr = new PaddleOcrService({
@@ -59,23 +51,21 @@ async function init(): Promise<void> {
 
   await ocr.initialize();
 
-  running = true;
-  parentPort!.postMessage({ type: 'ready' });
+  post({ type: 'ready' });
   tick();
 }
 
 // ── Tick loop ─────────────────────────────────────────────────────────────────
+// Runs until the main thread terminates the worker.
 
 function tick(): void {
-  if (!running) return;
   const start = performance.now();
   runPipeline()
     .catch((err: Error) => {
       console.error('[OCR] Pipeline error:', err.message);
-      parentPort!.postMessage({ type: 'fail' });
+      post({ type: 'fail' });
     })
     .finally(() => {
-      if (!running) return;
       const elapsed = performance.now() - start;
       setTimeout(tick, Math.max(0, 1000 - elapsed));
     });
@@ -85,13 +75,13 @@ function tick(): void {
 
 async function runPipeline(): Promise<void> {
   if (!config.processName?.trim()) {
-    parentPort!.postMessage({ type: 'noProcess' });
+    post({ type: 'noProcess' });
     return;
   }
 
   const captureResult = await captureWindowRegion(config.processName);
   if (!captureResult) {
-    parentPort!.postMessage({ type: 'fail' });
+    post({ type: 'fail' });
     return;
   }
 
@@ -100,8 +90,8 @@ async function runPipeline(): Promise<void> {
   const ocrStart = performance.now();
 
   const [blue, red] = await Promise.all([
-    preprocessBlueRegion(rawRGBA, width, height, config.regions.blueGold),
-    preprocessRedRegion(rawRGBA, width, height, config.regions.redGold),
+    preprocessRegion(rawRGBA, width, height, config.regions.blueGold, 'blue'),
+    preprocessRegion(rawRGBA, width, height, config.regions.redGold,  'red'),
   ]);
 
   const recognitor = (ocr as any).recognitor;
@@ -126,11 +116,11 @@ async function runPipeline(): Promise<void> {
   const redParsed  = parseGoldValue(redRaw);
 
   if (!blueParsed.valid || !redParsed.valid) {
-    parentPort!.postMessage({ type: 'fail' });
+    post({ type: 'fail' });
     return;
   }
 
-  parentPort!.postMessage({
+  post({
     type:      'reading',
     blueGold:  blueParsed.value,
     redGold:   redParsed.value,
@@ -142,6 +132,6 @@ async function runPipeline(): Promise<void> {
 
 init().catch((err: Error) => {
   console.error('[OCR Worker] Init error:', err);
-  parentPort!.postMessage({ type: 'initError', error: err?.message ?? String(err) });
+  post({ type: 'initError', error: err?.message ?? String(err) });
   process.exit(1);
 });

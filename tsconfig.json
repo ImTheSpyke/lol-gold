@@ -4,15 +4,14 @@
     "module": "CommonJS",
     "moduleResolution": "node10",
     "ignoreDeprecations": "6.0",
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "types": ["node", "jest"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": false,
-    "sourceMap": false
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "rootDir": "."
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "tests/**/*"]
 }

@@ -16,6 +16,9 @@ const RegionSchema = z.object({
   height: z.number().int().min(1),
 });
 
+const DEFAULT_BLUE_REGION = { x: 798,  y: 17, width: 60, height: 20 };
+const DEFAULT_RED_REGION  = { x: 1103, y: 18, width: 60, height: 20 };
+
 // DB credentials come exclusively from environment variables (.env / process.env).
 // They are NOT stored in config.json — no secrets on disk.
 export const AppConfigSchema = z.object({
@@ -24,9 +27,9 @@ export const AppConfigSchema = z.object({
   autoStart:      z.boolean().default(false),
   autoStop:       z.boolean().default(true),
   regions: z.object({
-    blueGold: RegionSchema.default({ x: 798,  y: 17, width: 60, height: 20 }),
-    redGold:  RegionSchema.default({ x: 1103, y: 18, width: 60, height: 20 }),
-  }).default({ blueGold: { x: 798, y: 17, width: 60, height: 20 }, redGold: { x: 1103, y: 18, width: 60, height: 20 } }),
+    blueGold: RegionSchema.default(DEFAULT_BLUE_REGION),
+    redGold:  RegionSchema.default(DEFAULT_RED_REGION),
+  }).default({ blueGold: DEFAULT_BLUE_REGION, redGold: DEFAULT_RED_REGION }),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
