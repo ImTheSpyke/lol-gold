@@ -1,7 +1,13 @@
+.git/
+.claude/
+.vscode/
 node_modules/
 dist/
+coverage/
+data/
+tests/
 .env
+.env.*
 config.json
 *.md
-.git/
-tests/
+*.log

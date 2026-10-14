@@ -1,50 +1,51 @@
 # syntax=docker/dockerfile:1
 #
-# Standard Linux Node.js image.
+# Linux image for the dashboard / API.
 #
-# IMPORTANT: node-screenshots captures Win32 windows and cannot work inside a
-# Linux container. Run this image only if you are deploying the app on a
-# Windows host using Windows containers, OR if you want to run the dashboard
-# without the OCR capture (e.g. graph-only viewing mode on a separate host).
-#
-# For the standard Windows workflow, build locally and run directly:
-#   npm run build && node dist/index.js
+# NOTE: node-screenshots captures Win32 windows and cannot work inside a Linux
+# container — OCR capture is disabled there and the app runs in graph-only
+# mode. For live capture, run the app directly on the Windows host
+# (`npm run build && npm start`) and use Docker only for MariaDB.
 #
 # DB credentials are supplied exclusively via environment variables.
-# Copy .env.example → .env and fill in your values before running.
+
+ARG NODE_VERSION=26
 
 # ── Build stage ───────────────────────────────────────────────────────────────
-FROM node:20-slim AS builder
+FROM node:${NODE_VERSION}-slim AS builder
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
 
-COPY tsconfig.json ./
+COPY tsconfig*.json ./
 COPY src/ ./src/
-
 RUN npm run build
 
 # ── Production stage ──────────────────────────────────────────────────────────
-FROM node:20-slim AS production
+FROM node:${NODE_VERSION}-slim AS production
 WORKDIR /app
 
-# Install only production dependencies
+# Fonts for server-side chart rendering (PNG export); slim ships none.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY public/ ./public/
 
-# Static assets are part of the source — copy them alongside compiled JS
-COPY src/server/static ./dist/server/static
-
-# Create the config data directory (bind-mounted from host at runtime)
+# config.json lives in /app/data, bind-mounted from the host at runtime
 RUN mkdir -p /app/data
 
-ENV NODE_ENV=production
-ENV CONFIG_DIR=/app/data
+ENV NODE_ENV=production \
+    CONFIG_DIR=/app/data \
+    PORT=3000
 EXPOSE 3000
 
-# /app/data is bind-mounted from the host as a directory — config.json lives inside.
-# DB credentials come from environment variables — never baked into the image.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+
 CMD ["node", "dist/index.js"]

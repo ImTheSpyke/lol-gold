@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { loadConfig, loadDBConfig, patchConfig } from '../../config/config';
 import type { SessionManager } from '../../session/manager';
+import { sendError } from '../errors';
 
 interface ProcessEntry { appName: string; title: string; width: number; height: number; }
 
@@ -61,11 +62,7 @@ export function configRoutes(sessionManager: SessionManager) {
     app.post('/', async (req, reply) => {
       const body = ConfigPatchSchema.safeParse(req.body);
       if (!body.success) {
-        return reply.status(400).send({
-          error:      'Invalid config patch',
-          code:       'VALIDATION_ERROR',
-          statusCode: 400,
-        });
+        return sendError(reply, 400, 'VALIDATION_ERROR', 'Invalid config patch');
       }
 
       const newConfig = patchConfig(body.data as Record<string, unknown>);

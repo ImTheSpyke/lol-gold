@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { SessionManager } from '../../session/manager';
 import { getGame } from '../../db/queries';
+import { gameNotFound, sendError } from '../errors';
 
 const StartSchema = z.object({
   gameUUID: z.string().uuid(),
@@ -28,12 +29,12 @@ export function sessionRoutes(sessionManager: SessionManager) {
     app.post('/start', async (req, reply) => {
       const body = StartSchema.safeParse(req.body);
       if (!body.success) {
-        return reply.status(400).send({ error: 'Invalid request body', code: 'VALIDATION_ERROR', statusCode: 400 });
+        return sendError(reply, 400, 'VALIDATION_ERROR', 'Invalid request body');
       }
 
       const game = await getGame(body.data.gameUUID);
       if (!game) {
-        return reply.status(404).send({ error: 'Game not found', code: 'GAME_NOT_FOUND', statusCode: 404 });
+        return gameNotFound(reply);
       }
 
       try {
@@ -42,9 +43,9 @@ export function sessionRoutes(sessionManager: SessionManager) {
       } catch (err) {
         const message = (err as Error).message;
         if (message === 'SESSION_ALREADY_RUNNING') {
-          return reply.status(409).send({ error: 'Session already running', code: 'SESSION_ALREADY_RUNNING', statusCode: 409 });
+          return sendError(reply, 409, 'SESSION_ALREADY_RUNNING', 'Session already running');
         }
-        return reply.status(500).send({ error: message, code: 'INTERNAL_ERROR', statusCode: 500 });
+        return sendError(reply, 500, 'INTERNAL_ERROR', message);
       }
     });
 
@@ -56,13 +57,13 @@ export function sessionRoutes(sessionManager: SessionManager) {
     app.post('/select', async (req, reply) => {
       const body = SelectSchema.safeParse(req.body);
       if (!body.success) {
-        return reply.status(400).send({ error: 'Invalid request body', code: 'VALIDATION_ERROR', statusCode: 400 });
+        return sendError(reply, 400, 'VALIDATION_ERROR', 'Invalid request body');
       }
 
       if (body.data.gameUUID !== null) {
         const game = await getGame(body.data.gameUUID);
         if (!game) {
-          return reply.status(404).send({ error: 'Game not found', code: 'GAME_NOT_FOUND', statusCode: 404 });
+          return gameNotFound(reply);
         }
       }
 

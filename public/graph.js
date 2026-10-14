@@ -1,4 +1,4 @@
-/* global Chart */
+/* global Chart, gaussianSmooth */
 (function () {
   'use strict';
 
@@ -8,39 +8,6 @@
   const POLL_MS   = 5000;
 
   let chart = null;
-
-  // ── Smoothing ─────────────────────────────────────────────────────────────
-
-  function buildGaussianKernel(size, sigma) {
-    const half   = Math.floor(size / 2);
-    const kernel = [];
-    let sum = 0;
-    for (let i = 0; i < size; i++) {
-      const x   = i - half;
-      const val = Math.exp(-(x * x) / (2 * sigma * sigma));
-      kernel.push(val);
-      sum += val;
-    }
-    return kernel.map(v => v / sum);
-  }
-
-  function gaussianSmooth(data, windowSize, sigma) {
-    windowSize = windowSize || 15;
-    sigma      = sigma      || 5;
-    if (!data.length) return [];
-    const kernel = buildGaussianKernel(windowSize, sigma);
-    const halfW  = Math.floor(windowSize / 2);
-    return data.map(function (_, i) {
-      var wSum = 0, wTotal = 0;
-      for (var j = 0; j < windowSize; j++) {
-        var idx = i - halfW + j;
-        if (idx < 0 || idx >= data.length) continue;
-        wSum   += data[idx] * kernel[j];
-        wTotal += kernel[j];
-      }
-      return wTotal > 0 ? wSum / wTotal : 0;
-    });
-  }
 
   // ── Formatting ────────────────────────────────────────────────────────────
 
