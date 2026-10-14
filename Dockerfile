@@ -9,8 +9,10 @@
 #
 # DB credentials are supplied exclusively via environment variables.
 
+ARG NODE_VERSION=26
+
 # ── Build stage ───────────────────────────────────────────────────────────────
-FROM node:22-slim AS builder
+FROM node:${NODE_VERSION}-slim AS builder
 WORKDIR /app
 
 COPY package*.json ./
@@ -21,8 +23,13 @@ COPY src/ ./src/
 RUN npm run build
 
 # ── Production stage ──────────────────────────────────────────────────────────
-FROM node:22-slim AS production
+FROM node:${NODE_VERSION}-slim AS production
 WORKDIR /app
+
+# Fonts for server-side chart rendering (PNG export); slim ships none.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
@@ -37,5 +44,8 @@ ENV NODE_ENV=production \
     CONFIG_DIR=/app/data \
     PORT=3000
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 
 CMD ["node", "dist/index.js"]

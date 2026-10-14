@@ -1,72 +1,59 @@
-# ── Usage ─────────────────────────────────────────────────────────────────────
-#
-#  Default (app only, remote/existing MariaDB):
-#    docker compose up -d
-#
-#  With local MariaDB container (uses the 'db' profile):
-#    docker compose --profile db up -d
-#
-#  DB credentials are read from .env — copy .env.example → .env first.
-#  App settings persist in ./data/config.json (auto-created on first run).
-#
-# ─────────────────────────────────────────────────────────────────────────────
+name: lol-gold
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
 
 services:
-
-  # ── Application ──────────────────────────────────────────────────────────────
   app:
-    image: harbor.imthespyke.fr/imthespyke/lol-graph:latest
-    build:
-      context:    .
-      dockerfile: Dockerfile
+    image: harbor.imthespyke.fr/imthespyke/lol-graph:${IMAGE_TAG:-latest}
+    build: .
     container_name: lol-gold-app
     restart: unless-stopped
+    init: true
     ports:
-      # PORT is the host port; the app always listens on 3000 in the container.
-      - "${PORT:-3000}:3000"
-    env_file: .env
+      - ${PORT:-3000}:3000
     environment:
-      PORT:        "3000"
-      DB_HOST:     "${DB_HOST:-127.0.0.1}"
-      DB_PORT:     "${DB_PORT:-3306}"
-      DB_USER:     "${DB_USER:-lolgold}"
-      DB_PASSWORD: "${DB_PASSWORD:-lolgold}"
-      DB_NAME:     "${DB_NAME:-btg_temp}"
-      CONFIG_DIR:  "/app/data"
+      DB_HOST: ${DB_HOST:-mariadb}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-lolgold}
+      DB_PASSWORD: ${DB_PASSWORD:-lolgold}
+      DB_NAME: ${DB_NAME:-btg_temp}
     volumes:
-      # Bind-mount a *directory* (not the config.json file). This sidesteps
-      # the Docker EISDIR gotcha — Docker auto-creates ./data/ on the host if
-      # missing, and the app writes config.json inside it.
       - ./data:/app/data
-    # Only wait for the local DB container when the 'db' profile is active.
-    # When using a remote DB this block is simply ignored.
+      - ocr_models:/root/.cache/ppu-paddle-ocr
     depends_on:
       mariadb:
         condition: service_healthy
-        required:  false
+        required: false
+    logging: *logging
 
-  # ── Optional local MariaDB (activate with: --profile db) ─────────────────────
+  # Optional local database: docker compose --profile db up -d
   mariadb:
     profiles: [db]
-    image: mariadb:11
+    image: mariadb:11.8
     container_name: lol-gold-db
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootpassword}"
-      MARIADB_DATABASE:      "${DB_NAME:-btg_temp}"
-      MARIADB_USER:          "${DB_USER:-lolgold}"
-      MARIADB_PASSWORD:      "${DB_PASSWORD:-lolgold}"
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_NAME:-btg_temp}
+      MARIADB_USER: ${DB_USER:-lolgold}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-lolgold}
+      MARIADB_AUTO_UPGRADE: "1"
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - 127.0.0.1:${DB_PORT:-3306}:3306
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test:         ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval:     10s
-      timeout:      5s
-      retries:      5
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 10s
+      timeout: 5s
+      retries: 5
       start_period: 30s
+    logging: *logging
 
 volumes:
   mariadb_data:
-    driver: local
+  ocr_models:

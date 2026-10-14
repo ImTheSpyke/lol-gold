@@ -8,6 +8,7 @@ import { gamesRoutes }   from './routes/games';
 import { sessionRoutes } from './routes/session';
 import { configRoutes }  from './routes/config';
 import { graphRoutes }   from './routes/graph';
+import { healthRoutes }  from './routes/health';
 
 export function buildServer(sessionManager: SessionManager) {
   const app = Fastify({ logger: { level: 'info' } });
@@ -15,6 +16,7 @@ export function buildServer(sessionManager: SessionManager) {
   app.register(fastifyStatic, { root: PUBLIC_DIR, prefix: '/static/' });
   app.register(fastifyStatic, { root: CHARTJS_DIST_DIR, prefix: '/vendor/chart.js/', decorateReply: false });
 
+  app.register(healthRoutes);
   app.register(pageRoutes);
   app.register(gamesRoutes,                   { prefix: '/api/games' });
   app.register(sessionRoutes(sessionManager), { prefix: '/api/session' });
