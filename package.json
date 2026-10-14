@@ -1,6 +1,6 @@
 {
   "name": "lol-gold",
-  "version": "1.0.0",
+  "version": "26.0.0",
   "description": "Real-time League of Legends team gold tracker: screen OCR, MariaDB storage and a live graph dashboard.",
   "private": true,
   "main": "dist/index.js",
