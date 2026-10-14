@@ -24,7 +24,7 @@ concurrency:
 
 env:
   REGISTRY: harbor.imthespyke.fr
-  IMAGE: harbor.imthespyke.fr/imthespyke/lol-graph
+  IMAGE: harbor.imthespyke.fr/imthespyke-public/lol-graph
 
 jobs:
   build:
