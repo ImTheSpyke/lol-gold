@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lol-gold Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+    }
+
+    header h1 { font-size: 1.25rem; font-weight: 700; color: #f8fafc; }
+
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .status-dot .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: background 0.3s;
+    }
+
+    .status-dot .dot.running { background: #22c55e; }
+    .status-dot .dot.crashed { background: #ef4444; }
+
+    main { max-width: 760px; margin: 2rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+
+    .card h2 { font-size: 0.875rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+
+    .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+
+    select, input[type="text"], input[type="number"], input[type="password"] {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 0.375rem;
+      color: #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, input:focus { border-color: #3b82f6; }
+
+    select { min-width: 280px; cursor: pointer; }
+
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, background 0.2s;
+    }
+
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary   { background: #3b82f6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; }
+    .btn-danger    { background: #ef4444; color: #fff; }
+    .btn-danger:hover:not(:disabled)  { background: #dc2626; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-secondary:hover:not(:disabled) { background: #475569; }
+    .btn-success   { background: #22c55e; color: #fff; }
+    .btn-success:hover:not(:disabled)   { background: #16a34a; }
+
+    .toggle-row {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: #cbd5e1;
+    }
+
+    .region-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .region-grid label { font-size: 0.75rem; color: #94a3b8; }
+    .region-grid input { width: 100%; }
+
+    .region-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #cbd5e1;
+      margin: 0.75rem 0 0.4rem;
+    }
+
+    .db-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .db-grid label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.25rem; }
+    .db-grid .full { grid-column: span 2; }
+
+    .nav-link {
+      display: inline-block;
+      color: #3b82f6;
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    .nav-link:hover { text-decoration: underline; }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.875rem;
+      color: #e2e8f0;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      z-index: 100;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      width: 380px;
+    }
+
+    .modal h3 { margin-bottom: 1rem; font-size: 1rem; }
+
+    .modal .field { margin-bottom: 0.75rem; }
+    .modal .field label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.25rem; }
+    .modal .field input { width: 100%; }
+
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem; }
+
+    .fails-badge {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>lol-gold Dashboard</h1>
+  <div class="status-dot">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">IDLE</span>
+  </div>
+</header>
+
+<main>
+  <!-- Game Session -->
+  <div class="card">
+    <h2>Game Session</h2>
+    <div class="row">
+      <select id="gameSelect">
+        <option value="">— Select a game —</option>
+      </select>
+      <button class="btn-secondary" id="btnNewGame">New Game</button>
+      <button class="btn-primary"   id="btnApply">Apply</button>
+    </div>
+    <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b;" id="activeUUIDLabel">No game selected</div>
+  </div>
+
+  <!-- OCR Control -->
+  <div class="card">
+    <h2>OCR Control</h2>
+    <div class="row">
+      <button class="btn-success"   id="btnStart">Start OCR</button>
+      <button class="btn-danger"    id="btnStop">Stop OCR</button>
+      <button class="btn-secondary" id="btnOpenGraph"         disabled>Open Graph</button>
+      <button class="btn-secondary" id="btnOpenWidget"        disabled>Open Widget</button>
+      <button class="btn-secondary" id="btnOpenCurrentWidget">Open Current Widget</button>
+      <span class="fails-badge" id="failsBadge"></span>
+    </div>
+    <div id="noProcessWarning" style="display:none; margin-top:0.75rem; padding:0.5rem 0.75rem; background:#7c2d12; border:1px solid #ef4444; border-radius:0.375rem; font-size:0.8rem; color:#fca5a5;">
+      ⚠ No process selected — select a process in Capture Settings and save.
+    </div>
+    <div class="toggle-row">
+      <label class="toggle-label">
+        <input type="checkbox" id="chkAutoStart" />
+        Auto Start
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="chkAutoStop" />
+        Auto Stop
+      </label>
+    </div>
+  </div>
+
+  <!-- Capture Settings -->
+  <div class="card">
+    <h2>Capture Settings</h2>
+    <div class="row" style="margin-bottom: 0.75rem;">
+      <label style="font-size: 0.8rem; color: #94a3b8; white-space: nowrap;">Process</label>
+      <select id="processName" style="flex: 1;"></select>
+      <button class="btn-secondary" id="btnRefreshProcesses" title="Refresh process list">↻ Refresh</button>
+    </div>
+
+    <div class="region-label" style="color: #3b82f6;">Blue Gold Region</div>
+    <div class="region-grid">
+      <div><label>X</label><input type="number" id="blueX" /></div>
+      <div><label>Y</label><input type="number" id="blueY" /></div>
+      <div><label>Width</label><input type="number" id="blueW" /></div>
+      <div><label>Height</label><input type="number" id="blueH" /></div>
+    </div>
+
+    <div class="region-label" style="color: #ef4444;">Red Gold Region</div>
+    <div class="region-grid">
+      <div><label>X</label><input type="number" id="redX" /></div>
+      <div><label>Y</label><input type="number" id="redY" /></div>
+      <div><label>Width</label><input type="number" id="redW" /></div>
+      <div><label>Height</label><input type="number" id="redH" /></div>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <button class="btn-primary" id="btnSaveCapture">Save Capture Settings</button>
+    </div>
+  </div>
+
+  <!-- Database Settings -->
+  <div class="card">
+    <h2>Database Settings</h2>
+    <div class="db-grid">
+      <div>
+        <label>Host</label>
+        <input type="text" id="dbHost" />
+      </div>
+      <div>
+        <label>Port</label>
+        <input type="number" id="dbPort" />
+      </div>
+      <div>
+        <label>User</label>
+        <input type="text" id="dbUser" />
+      </div>
+      <div>
+        <label>Password</label>
+        <input type="password" id="dbPassword" placeholder="(unchanged)" />
+      </div>
+      <div>
+        <label>Database</label>
+        <input type="text" id="dbDatabase" />
+      </div>
+    </div>
+    <div style="margin-top: 1rem;">
+      <button class="btn-primary" id="btnSaveDB">Save DB Settings</button>
+      <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.75rem;">Restart required to reconnect</span>
+    </div>
+  </div>
+
+  <a class="nav-link" href="/recent">View Recent Games →</a>
+</main>
+
+<!-- New Game Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>Create New Game</h3>
+    <div class="field">
+      <label>Name (optional)</label>
+      <input type="text" id="newGameName" placeholder="e.g. Finals Scrim" maxlength="255" />
+    </div>
+    <div class="field">
+      <label>Description (optional)</label>
+      <input type="text" id="newGameDesc" placeholder="e.g. Best of 5, game 3" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btnModalCancel">Cancel</button>
+      <button class="btn-primary"   id="btnModalCreate">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let games     = [];
+  let statusEvt = null;
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg, duration = 3000) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), duration);
+  }
+
+  // ── API helpers ───────────────────────────────────────────────────────────
+  async function api(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body:    body ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+  }
+
+  // ── Load processes ────────────────────────────────────────────────────────
+  async function loadProcesses(selectValue) {
+    const btn = $('btnRefreshProcesses');
+    btn.disabled = true;
+    try {
+      const data = await api('GET', '/api/config/processes');
+      const sel  = $('processName');
+      const current = selectValue ?? sel.value;
+      sel.innerHTML = '';
+      if (!data.processes || data.processes.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '— No processes found —';
+        sel.appendChild(opt);
+      } else {
+        for (const p of data.processes) {
+          const opt = document.createElement('option');
+          opt.value = p.appName;
+          opt.textContent = `${p.appName} — ${p.width}x${p.height}`;
+          sel.appendChild(opt);
+        }
+        if (current) sel.value = current;
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Load config ───────────────────────────────────────────────────────────
+  async function loadConfig() {
+    const cfg = await api('GET', '/api/config');
+    loadProcesses(cfg.processName || '');
+    $('blueX').value = cfg.regions.blueGold.x;
+    $('blueY').value = cfg.regions.blueGold.y;
+    $('blueW').value = cfg.regions.blueGold.width;
+    $('blueH').value = cfg.regions.blueGold.height;
+    $('redX').value  = cfg.regions.redGold.x;
+    $('redY').value  = cfg.regions.redGold.y;
+    $('redW').value  = cfg.regions.redGold.width;
+    $('redH').value  = cfg.regions.redGold.height;
+    $('dbHost').value     = cfg.db.host;
+    $('dbPort').value     = cfg.db.port;
+    $('dbUser').value     = cfg.db.user;
+    $('dbDatabase').value = cfg.db.database;
+  }
+
+  // ── Load games ────────────────────────────────────────────────────────────
+  async function loadGames() {
+    const data = await api('GET', '/api/games?page=1&perPage=100');
+    games = data.games || [];
+    const sel = $('gameSelect');
+    sel.innerHTML = '<option value="">— Select a game —</option>';
+    for (const g of games) {
+      const opt = document.createElement('option');
+      opt.value       = g.uuid;
+      opt.textContent = g.name ? `${g.name} (${g.uuid.slice(0,8)}…)` : g.uuid;
+      sel.appendChild(opt);
+    }
+  }
+
+  // ── Status polling ────────────────────────────────────────────────────────
+  async function pollStatus() {
+    const st = await api('GET', '/api/session/status');
+    const dot  = $('statusDot');
+    const text = $('statusText');
+
+    dot.className = 'dot' + (st.state === 'RUNNING' ? ' running' : '');
+    text.textContent = st.state;
+
+    $('chkAutoStart').checked = st.autoStart;
+    $('chkAutoStop').checked  = st.autoStop;
+
+    $('failsBadge').textContent = st.consecutiveFails > 0
+      ? `${st.consecutiveFails} consecutive fail${st.consecutiveFails > 1 ? 's' : ''}`
+      : '';
+
+    if (st.activeGameUUID) {
+      $('activeUUIDLabel').textContent = `Active: ${st.activeGameUUID}`;
+      $('gameSelect').value = st.activeGameUUID;
+    } else {
+      $('activeUUIDLabel').textContent = 'No game selected';
+    }
+
+    $('btnStart').disabled      = st.state === 'RUNNING' || !st.activeGameUUID;
+    $('btnStop').disabled       = st.state === 'IDLE';
+    $('btnOpenGraph').disabled  = !st.activeGameUUID;
+    $('btnOpenWidget').disabled = !st.activeGameUUID;
+  }
+
+  // ── SSE ───────────────────────────────────────────────────────────────────
+  function connectSSE() {
+    if (statusEvt) { statusEvt.close(); statusEvt = null; }
+    statusEvt = new EventSource('/api/session/events');
+    statusEvt.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'autoStopped') toast('Auto-stopped: game deselected');
+      if (msg.type === 'autoStarted') toast('Auto-started: OCR running');
+      if (msg.type === 'workerCrash') {
+        $('statusDot').className = 'dot crashed';
+        toast('OCR worker crashed — respawning…');
+      }
+      if (msg.type === 'noProcess') {
+        $('noProcessWarning').style.display = 'block';
+      } else if (msg.type === 'stateChange' || msg.type === 'autoStarted') {
+        $('noProcessWarning').style.display = 'none';
+      }
+      pollStatus();
+    };
+    statusEvt.onerror = () => {
+      statusEvt.close();
+      statusEvt = null;
+      setTimeout(connectSSE, 3000);
+    };
+  }
+
+  // ── Open graph / widget ───────────────────────────────────────────────────
+  $('btnOpenGraph').addEventListener('click', () => {
+    const uuid = $('gameSelect').value;
+    if (uuid) window.open('/graph/' + uuid, '_blank');
+  });
+
+  $('btnOpenWidget').addEventListener('click', () => {
+    const uuid = $('gameSelect').value;
+    if (uuid) window.open('/widget/' + uuid, '_blank');
+  });
+
+  $('btnOpenCurrentWidget').addEventListener('click', () => {
+    window.open('/widget/current', '_blank');
+  });
+
+  // ── Refresh processes ─────────────────────────────────────────────────────
+  $('btnRefreshProcesses').addEventListener('click', () => loadProcesses());
+  $('processName').addEventListener('change', () => { $('noProcessWarning').style.display = 'none'; });
+
+  // ── Apply game ────────────────────────────────────────────────────────────
+  $('btnApply').addEventListener('click', async () => {
+    const uuid = $('gameSelect').value || null;
+    const res  = await api('POST', '/api/session/select', { gameUUID: uuid });
+    if (res.ok) { toast('Game selected'); pollStatus(); }
+    else toast('Error: ' + res.error);
+  });
+
+  // ── Start / Stop ──────────────────────────────────────────────────────────
+  $('btnStart').addEventListener('click', async () => {
+    const uuid = $('gameSelect').value;
+    if (!uuid) { toast('Select a game first'); return; }
+    const res = await api('POST', '/api/session/start', { gameUUID: uuid });
+    if (res.ok) { toast('OCR started'); pollStatus(); }
+    else toast('Error: ' + res.error);
+  });
+
+  $('btnStop').addEventListener('click', async () => {
+    const res = await api('POST', '/api/session/stop');
+    if (res.ok) { toast('OCR stopped'); pollStatus(); }
+    else toast('Error: ' + res.error);
+  });
+
+  // ── Auto toggles ──────────────────────────────────────────────────────────
+  $('chkAutoStart').addEventListener('change', async (e) => {
+    await api('POST', '/api/config', { autoStart: e.target.checked });
+  });
+
+  $('chkAutoStop').addEventListener('change', async (e) => {
+    await api('POST', '/api/config', { autoStop: e.target.checked });
+  });
+
+  // ── Save capture settings ──────────────────────────────────────────────────
+  $('btnSaveCapture').addEventListener('click', async () => {
+    const res = await api('POST', '/api/config', {
+      processName: $('processName').value,
+      regions: {
+        blueGold: { x: +$('blueX').value, y: +$('blueY').value, width: +$('blueW').value, height: +$('blueH').value },
+        redGold:  { x: +$('redX').value,  y: +$('redY').value,  width: +$('redW').value,  height: +$('redH').value  },
+      },
+    });
+    if (res.ok) toast('Capture settings saved');
+    else toast('Error: ' + res.error);
+  });
+
+  // ── Save DB settings ───────────────────────────────────────────────────────
+  $('btnSaveDB').addEventListener('click', async () => {
+    const patch = {
+      db: {
+        host:     $('dbHost').value,
+        port:     +$('dbPort').value,
+        user:     $('dbUser').value,
+        database: $('dbDatabase').value,
+      }
+    };
+    const pw = $('dbPassword').value;
+    if (pw && pw !== '***') patch.db.password = pw;
+    const res = await api('POST', '/api/config', patch);
+    if (res.ok) toast('DB settings saved — restart to reconnect');
+    else toast('Error: ' + res.error);
+  });
+
+  // ── New Game Modal ────────────────────────────────────────────────────────
+  $('btnNewGame').addEventListener('click', () => {
+    $('newGameName').value = '';
+    $('newGameDesc').value = '';
+    $('modalOverlay').classList.add('open');
+    $('newGameName').focus();
+  });
+
+  $('btnModalCancel').addEventListener('click', () => {
+    $('modalOverlay').classList.remove('open');
+  });
+
+  $('modalOverlay').addEventListener('click', (e) => {
+    if (e.target === $('modalOverlay')) $('modalOverlay').classList.remove('open');
+  });
+
+  $('btnModalCreate').addEventListener('click', async () => {
+    const name = $('newGameName').value.trim() || undefined;
+    const desc = $('newGameDesc').value.trim() || undefined;
+    const res  = await api('POST', '/api/games', { name, description: desc });
+    if (res.uuid) {
+      toast(`Game created: ${res.uuid.slice(0, 8)}…`);
+      $('modalOverlay').classList.remove('open');
+      await loadGames();
+      $('gameSelect').value = res.uuid;
+    } else {
+      toast('Error: ' + (res.error || 'Unknown error'));
+    }
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  (async () => {
+    await Promise.all([loadConfig(), loadGames()]);
+    await pollStatus();
+    setInterval(pollStatus, 2000);
+    connectSSE();
+  })();
+</script>
+</body>
+</html>

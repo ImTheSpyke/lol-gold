@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gold Graph — lol-gold</title>
+  <script src="/static/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+
+    header a.back { color: #3b82f6; text-decoration: none; font-size: 0.875rem; }
+    header a.back:hover { text-decoration: underline; }
+
+    header h1 { font-size: 1.1rem; font-weight: 700; color: #f8fafc; }
+
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.625rem;
+      border-radius: 9999px;
+      background: #22c55e22;
+      color: #22c55e;
+      border: 1px solid #22c55e44;
+    }
+
+    .status-badge.finished {
+      background: #64748b22;
+      color: #94a3b8;
+      border-color: #64748b44;
+    }
+
+    .btn-export {
+      padding: 0.4rem 0.875rem;
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 0.375rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .btn-export:hover { background: #475569; }
+
+    .chart-wrapper {
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .chart-container {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    canvas { display: block; }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.25rem;
+      font-size: 0.8rem;
+    }
+
+    .legend .blue { color: #3b82f6; }
+    .legend .red  { color: #ef4444; }
+
+    .zero-line-label {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #475569;
+      margin-top: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem;
+      color: #475569;
+    }
+
+    .smooth-toggle {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .smooth-toggle a { color: #3b82f6; text-decoration: none; }
+    .smooth-toggle a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="app" data-game-uuid="{{GAME_UUID}}" data-smooth="{{SMOOTH}}">
+
+    <header>
+      <div class="header-left">
+        <a class="back" href="/recent">← Recent Games</a>
+        <h1 id="gameTitle">Loading…</h1>
+      </div>
+      <div class="header-right">
+        <span class="status-badge" id="statusBadge">Live</span>
+        <span class="smooth-toggle" id="smoothToggle"></span>
+        <a class="btn-export" id="exportLink" href="#">Export PNG</a>
+      </div>
+    </header>
+
+    <div class="chart-wrapper">
+      <div>
+        <div class="chart-container" id="chartContainer">
+          <canvas id="goldChart" width="1200" height="400"></canvas>
+        </div>
+        <div class="legend">
+          <span class="blue">■ Blue Team Ahead</span>
+          <span class="red">■ Red Team Ahead</span>
+        </div>
+        <div class="zero-line-label">Gold parity line (0k difference)</div>
+        <div class="empty-state" id="emptyState" style="display:none;">
+          No data yet for this game.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/graph.js"></script>
+</body>
+</html>

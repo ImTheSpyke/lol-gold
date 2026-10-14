@@ -1,0 +1,71 @@
+
+# ── Usage ─────────────────────────────────────────────────────────────────────
+#
+#  Default (app only, remote/existing MariaDB):
+#    docker-compose up -d
+#
+#  With local MariaDB container (uses the 'db' profile):
+#    docker-compose --profile db up -d
+#
+#  DB credentials are read from .env — copy .env.example → .env first.
+#  App settings persist in ./data/config.json (auto-created on first run).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Application ──────────────────────────────────────────────────────────────
+  app:
+    build:
+      context:    .
+      dockerfile: Dockerfile
+    container_name: lol-gold-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env
+    environment:
+      PORT:        "${PORT:-3000}"
+      DB_HOST:     "${DB_HOST:-127.0.0.1}"
+      DB_PORT:     "${DB_PORT:-3306}"
+      DB_USER:     "${DB_USER:-lolgold}"
+      DB_PASSWORD: "${DB_PASSWORD:-lolgold}"
+      DB_NAME:     "${DB_NAME:-btg_temp}"
+      CONFIG_DIR:  "/app/data"
+    volumes:
+      # Bind-mount a *directory* (not the config.json file). This sidesteps
+      # the Docker EISDIR gotcha — Docker auto-creates ./data/ on the host if
+      # missing, and the app writes config.json inside it.
+      - ./data:/app/data
+    # Only wait for the local DB container when the 'db' profile is active.
+    # When using a remote DB this block is simply ignored.
+    depends_on:
+      mariadb:
+        condition: service_healthy
+        required:  false
+
+  # ── Optional local MariaDB (activate with: --profile db) ─────────────────────
+  mariadb:
+    profiles: [db]
+    image: mariadb:11
+    container_name: lol-gold-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-rootpassword}"
+      MARIADB_DATABASE:      "${DB_NAME:-btg_temp}"
+      MARIADB_USER:          "${DB_USER:-lolgold}"
+      MARIADB_PASSWORD:      "${DB_PASSWORD:-lolgold}"
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test:         ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval:     10s
+      timeout:      5s
+      retries:      5
+      start_period: 30s
+
+volumes:
+  mariadb_data:
+    driver: local

@@ -1,0 +1,20 @@
+{
+  "processName": "League Of Legends",
+  "activeGameUUID": null,
+  "autoStart": false,
+  "autoStop": true,
+  "regions": {
+    "blueGold": {
+      "x": 798,
+      "y": 17,
+      "width": 60,
+      "height": 20
+    },
+    "redGold": {
+      "x": 1103,
+      "y": 18,
+      "width": 60,
+      "height": 20
+    }
+  }
+}
