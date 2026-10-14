@@ -13,14 +13,10 @@ function getRenderer(): import('chartjs-node-canvas').ChartJSNodeCanvas {
   return renderer;
 }
 
-function formatTime(seconds: number): string {
-  return `${Math.floor(seconds / 60)}min`;
-}
-
 export async function exportToPNG(readings: Pick<GraphPoint, 't' | 'diff'>[], smooth: boolean): Promise<Buffer> {
   const rawDiffs = readings.map(r => r.diff);
   const diffs    = smooth ? gaussianSmooth(rawDiffs) : rawDiffs;
-  const labels   = readings.map(r => formatTime(r.t));
+  const points   = readings.map((r, i) => ({ x: r.t / 60, y: diffs[i] ?? 0 }));
 
   const maxAbs = Math.max(5, ...diffs.map(Math.abs));
   const yRange = maxAbs + 1;
@@ -28,11 +24,10 @@ export async function exportToPNG(readings: Pick<GraphPoint, 't' | 'diff'>[], sm
   const configuration: ChartConfiguration = {
     type: 'line',
     data: {
-      labels,
       datasets: [
         {
           label:       'Gold Difference',
-          data:        diffs,
+          data:        points,
           borderWidth: 2,
           pointRadius: 0,
           tension:     0,
@@ -54,11 +49,14 @@ export async function exportToPNG(readings: Pick<GraphPoint, 't' | 'diff'>[], sm
       maintainAspectRatio: false,
       scales: {
         x: {
-          type:  'category',
+          type:  'linear',
+          min:   0,
+          max:   points.length ? points[points.length - 1]!.x : undefined,
           ticks: {
-            maxTicksLimit: 12,
-            autoSkip:      true,
+            stepSize:      5,
+            includeBounds: false,
             color:         '#94a3b8',
+            callback:      (v) => `${v}min`,
           },
           grid: { color: '#1e293b' },
         },

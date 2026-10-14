@@ -1,4 +1,4 @@
-/* global Chart, gaussianSmooth */
+/* global Chart, gaussianSmooth, setTimeSeries, formatMinutes, formatClock */
 (function () {
   'use strict';
 
@@ -9,16 +9,6 @@
 
   let chart = null;
 
-  // ── Formatting ────────────────────────────────────────────────────────────
-
-  function formatTime(seconds) {
-    return Math.floor(seconds / 60) + 'min';
-  }
-
-  function buildLabels(readings) {
-    return readings.map(function (r) { return formatTime(r.t); });
-  }
-
   // ── Chart init ────────────────────────────────────────────────────────────
 
   function initChart() {
@@ -26,7 +16,6 @@
     chart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels:   [],
         datasets: [{
           label:       'Gold Difference',
           data:        [],
@@ -55,12 +44,14 @@
         },
         scales: {
           x: {
-            type:  'category',
+            type:  'linear',
+            min:   0,
             ticks: {
-              maxTicksLimit: 12,
-              autoSkip:      true,
               color:         '#64748b',
               maxRotation:   0,
+              stepSize:      5,
+              includeBounds: false,
+              callback:      formatMinutes,
             },
             grid:  { color: '#1e293b' },
           },
@@ -93,7 +84,7 @@
             titleColor:      '#94a3b8',
             bodyColor:       '#e2e8f0',
             callbacks: {
-              title: function (items) { return items[0].label; },
+              title: function (items) { return formatClock(items[0].parsed.x); },
               label: function (ctx) {
                 var v = ctx.parsed.y;
                 return (v > 0 ? 'Blue +' : 'Red +') + Math.abs(v).toFixed(1) + 'k';
@@ -116,10 +107,8 @@
 
     var rawDiffs = data.readings.map(function (r) { return r.diff; });
     var diffs    = SMOOTH ? gaussianSmooth(rawDiffs) : rawDiffs;
-    var labels   = buildLabels(data.readings);
 
-    chart.data.labels            = labels;
-    chart.data.datasets[0].data  = diffs;
+    setTimeSeries(chart, data.readings, diffs);
     chart.update('none');
   }
 
