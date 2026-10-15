@@ -1,8 +1,8 @@
-# lol-gold
+# lol-graph
 
 Real-time team gold tracker for League of Legends.
 
-lol-gold captures the in-game scoreboard once per second, reads both teams' gold
+lol-graph captures the in-game scoreboard once per second, reads both teams' gold
 totals with a local OCR model (PaddleOCR), stores the readings in MariaDB, and
 serves a web dashboard with a live gold-difference graph, PNG export, and
 streaming-overlay widgets.

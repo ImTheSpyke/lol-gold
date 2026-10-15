@@ -1,4 +1,4 @@
-# lol-gold
+# lol-graph
 
 TypeScript/Node app that OCRs League of Legends team gold totals at 1Hz,
 stores them in MariaDB, and serves a Fastify dashboard with live graphs.
