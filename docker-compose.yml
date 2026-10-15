@@ -9,7 +9,6 @@ x-logging: &logging
 services:
   app:
     image: harbor.imthespyke.fr/imthespyke/lol-graph:${IMAGE_TAG:-latest}
-    build: .
     container_name: lol-graph-app
     restart: unless-stopped
     init: true
