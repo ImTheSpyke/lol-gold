@@ -1,5 +1,5 @@
 {
-  "name": "lol-gold",
+  "name": "lol-graph",
   "version": "26.0.0",
   "description": "Real-time League of Legends team gold tracker: screen OCR, MariaDB storage and a live graph dashboard.",
   "license": "MIT",

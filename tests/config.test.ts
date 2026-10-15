@@ -10,7 +10,7 @@ describe('config load/save roundtrip', () => {
   let originalCwd: () => string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lol-gold-test-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lol-graph-test-'));
     originalCwd = process.cwd;
     process.cwd = () => tmpDir;
   });

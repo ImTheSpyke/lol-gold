@@ -1,4 +1,4 @@
-name: lol-gold
+name: lol-graph
 
 x-logging: &logging
   driver: json-file
@@ -10,7 +10,7 @@ services:
   app:
     image: harbor.imthespyke.fr/imthespyke/lol-graph:${IMAGE_TAG:-latest}
     build: .
-    container_name: lol-gold-app
+    container_name: lol-graph-app
     restart: unless-stopped
     init: true
     ports:
@@ -34,7 +34,7 @@ services:
   mariadb:
     profiles: [db]
     image: mariadb:11.8
-    container_name: lol-gold-db
+    container_name: lol-graph-db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
