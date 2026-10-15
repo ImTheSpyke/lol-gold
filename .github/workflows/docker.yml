@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          URL="https://${REGISTRY}/v2/imthespyke/lol-graph/manifests/${TAG}"
+          URL="https://${REGISTRY}/v2/imthespyke-public/lol-graph/manifests/${TAG}"
 
           CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
             -u "${HARBOR_USER}:${HARBOR_PASS}" \
