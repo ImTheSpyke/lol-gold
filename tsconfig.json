@@ -2,8 +2,7 @@
   "compilerOptions": {
     "target": "ES2024",
     "module": "CommonJS",
-    "moduleResolution": "node10",
-    "ignoreDeprecations": "6.0",
+    "moduleResolution": "bundler",
     "types": ["node", "jest"],
     "strict": true,
     "esModuleInterop": true,
