@@ -16,8 +16,6 @@ const RegionSchema = z.object({
 const DEFAULT_BLUE_REGION = { x: 798,  y: 17, width: 60, height: 20 };
 const DEFAULT_RED_REGION  = { x: 1103, y: 18, width: 60, height: 20 };
 
-// DB credentials come exclusively from environment variables (.env / process.env).
-// They are NOT stored in config.json — no secrets on disk.
 export const AppConfigSchema = z.object({
   processName:    z.string().default('League Of Legends'),
   activeGameUUID: z.string().uuid().nullable().default(null),
@@ -32,23 +30,9 @@ export const AppConfigSchema = z.object({
 export type AppConfig = z.infer<typeof AppConfigSchema>;
 export type Region    = z.infer<typeof RegionSchema>;
 
-// DB config is assembled from env vars at runtime.
-export interface DBConfig {
-  host:     string;
-  port:     number;
-  user:     string;
-  password: string;
-  database: string;
-}
-
-export function loadDBConfig(): DBConfig {
-  return {
-    host:     process.env['DB_HOST']     ?? '127.0.0.1',
-    port:     parseInt(process.env['DB_PORT'] ?? '3306', 10),
-    user:     process.env['DB_USER']     ?? 'root',
-    password: process.env['DB_PASSWORD'] ?? '',
-    database: process.env['DB_NAME']     ?? 'btg_temp',
-  };
+/** SQLite file; override with DB_PATH. */
+export function loadDBPath(): string {
+  return process.env['DB_PATH'] ?? path.join(CONFIG_DIR, 'lol-graph.db');
 }
 
 function deepMerge<T extends object>(base: T, patch: Partial<T>): T {

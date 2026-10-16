@@ -1,34 +1,30 @@
-import mysql from 'mysql2/promise';
-import type { DBConfig } from '../config/config';
+import { DatabaseSync } from 'node:sqlite';
+import fs from 'fs';
+import path from 'path';
 
-let pool: mysql.Pool | null = null;
+let db: DatabaseSync | null = null;
 
-export function createPool(db: DBConfig): mysql.Pool {
-  pool = mysql.createPool({
-    host:                  db.host,
-    port:                  db.port,
-    user:                  db.user,
-    password:              db.password,
-    database:              db.database,
-    waitForConnections:    true,
-    connectionLimit:       10,
-    queueLimit:            0,
-    enableKeepAlive:       true,
-    keepAliveInitialDelay: 10000,
-  });
-  return pool;
+/** Opens (creating if needed) the SQLite database file and enables WAL. */
+export function openDatabase(file: string): DatabaseSync {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  db = new DatabaseSync(file);
+  db.exec('PRAGMA journal_mode = WAL');
+  return db;
 }
 
-export function getPool(): mysql.Pool {
-  if (!pool) throw new Error('DB pool not initialized');
-  return pool;
+export function getDb(): DatabaseSync {
+  if (!db) throw new Error('Database not initialized');
+  return db;
 }
 
-export async function pingDB(): Promise<boolean> {
+export function closeDatabase(): void {
+  db?.close();
+  db = null;
+}
+
+export function pingDB(): boolean {
   try {
-    const conn = await getPool().getConnection();
-    await conn.ping();
-    conn.release();
+    getDb().prepare('SELECT 1').get();
     return true;
   } catch {
     return false;

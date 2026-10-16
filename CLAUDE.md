@@ -1,7 +1,7 @@
 # lol-graph
 
 TypeScript/Node app that OCRs League of Legends team gold totals at 1Hz,
-stores them in MariaDB, and serves a Fastify dashboard with live graphs.
+stores them in SQLite, and serves a Fastify dashboard with live graphs.
 See `README.md` for setup, scripts, routes and API.
 
 ## Commands
@@ -32,7 +32,7 @@ main thread                                   OCR worker thread (src/ocr/worker.
 ## Conventions
 
 - **Config**: `config.json` in `CONFIG_DIR` (default cwd) is validated by the zod schema in `src/config/config.ts`.
-  DB credentials come only from `DB_*` env vars and are never written to `config.json`.
+  The SQLite file is `lol-graph.db` in `CONFIG_DIR`, or `DB_PATH` if set.
 - **Errors**: routes reply with `sendError(reply, status, code, message)` from `src/server/errors.ts`,
   which produces `{ error, code, statusCode }`.
 - **Static pages** live in `public/`, served at `/static/*`. HTML pages are rendered by
@@ -41,12 +41,12 @@ main thread                                   OCR worker thread (src/ocr/worker.
 - Chart.js for the browser is served from `node_modules` at `/vendor/chart.js/`. Do not vendor it.
 - **Smoothing** is a Gaussian moving average (window 15, σ=5). `src/graph/smoothing.ts` (PNG export)
   and `public/smoothing.js` (browser) must stay in sync.
-- Gold values are in thousands (`12.5k` → `12.5`), stored as `DECIMAL(8,1)`.
+- Gold values are in thousands (`12.5k` → `12.5`), stored as `REAL`.
 
-## Database (`btg_temp`, created by `src/db/migrations.ts`)
+## Database (SQLite via built-in `node:sqlite`, created by `src/db/migrations.ts`)
 
-- `lol_games(id, uuid UNIQUE, name, description, created_at)`
-- `lol_team_score_graph(id, game_uuid, blue_gold, red_gold, recorded_at)`, indexed on `(game_uuid, recorded_at)`
+- `lol_games(id, uuid UNIQUE, name, description, created_at)` (`created_at` is ISO text)
+- `lol_team_score_graph(id, game_uuid, blue_gold, red_gold, recorded_at)` (`recorded_at` is epoch ms), indexed on `(game_uuid, recorded_at)`
 
 ## Deployment notes
 

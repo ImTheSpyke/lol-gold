@@ -14,8 +14,8 @@ export function toGraphPoints(rows: GraphRow[]): GraphPoint[] {
   const startMs = new Date(rows[0].recorded_at).getTime();
 
   return rows.map(row => {
-    const blue = parseFloat(row.blue_gold);
-    const red  = parseFloat(row.red_gold);
+    const blue = row.blue_gold;
+    const red  = row.red_gold;
     return {
       t:        (new Date(row.recorded_at).getTime() - startMs) / 1000,
       blueGold: blue,

@@ -1,7 +1,7 @@
 {
   "name": "lol-graph",
   "version": "26.0.2",
-  "description": "Real-time League of Legends team gold tracker: screen OCR, MariaDB storage and a live graph dashboard.",
+  "description": "Real-time League of Legends team gold tracker: screen OCR, SQLite storage and a live graph dashboard.",
   "license": "MIT",
   "private": true,
   "main": "dist/index.js",
@@ -21,7 +21,6 @@
     "chart.js": "^4.5.1",
     "dotenv": "^18.0.8",
     "fastify": "^5.12.7",
-    "mysql2": "^3.24.6",
     "node-screenshots": "^0.2.8",
     "onnxruntime-node": "^1.30.0",
     "ppu-paddle-ocr": "^6.6.1",
