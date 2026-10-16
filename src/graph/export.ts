@@ -1,16 +1,42 @@
-import type { ChartConfiguration } from 'chart.js';
+import type { ChartConfiguration, Plugin } from 'chart.js';
 import type { GraphPoint } from './readings';
 import { gaussianSmooth } from './smoothing';
 
-let renderer: import('chartjs-node-canvas').ChartJSNodeCanvas | null = null;
+const WIDTH  = 1200;
+const HEIGHT = 400;
 
-function getRenderer(): import('chartjs-node-canvas').ChartJSNodeCanvas {
-  if (!renderer) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { ChartJSNodeCanvas } = require('chartjs-node-canvas') as typeof import('chartjs-node-canvas');
-    renderer = new ChartJSNodeCanvas({ width: 1200, height: 400, backgroundColour: '#0f172a' });
+const background: Plugin = {
+  id: 'background',
+  beforeDraw(chart) {
+    const { ctx, width, height } = chart;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  },
+};
+
+async function render(configuration: ChartConfiguration): Promise<Buffer> {
+  // Lazy-loaded: native modules are only needed when a PNG is actually requested.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createCanvas } = require('@napi-rs/canvas') as typeof import('@napi-rs/canvas');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Chart, registerables } = require('chart.js') as typeof import('chart.js');
+  Chart.register(...registerables);
+
+  const canvas = createCanvas(WIDTH, HEIGHT);
+  // Chart.js only needs a canvas-like with a style object outside the DOM.
+  Object.assign(canvas, { style: {} });
+  const chart = new Chart(canvas as unknown as HTMLCanvasElement, {
+    ...configuration,
+    plugins: [background],
+  });
+  try {
+    return await canvas.encode('png');
+  } finally {
+    chart.destroy();
   }
-  return renderer;
 }
 
 export async function exportToPNG(readings: Pick<GraphPoint, 't' | 'diff'>[], smooth: boolean): Promise<Buffer> {
@@ -76,5 +102,5 @@ export async function exportToPNG(readings: Pick<GraphPoint, 't' | 'diff'>[], sm
     },
   };
 
-  return getRenderer().renderToBuffer(configuration);
+  return render(configuration);
 }

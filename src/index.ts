@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { loadConfig, loadDBConfig } from './config/config';
-import { createPool, pingDB } from './db/connection';
+import { loadConfig, loadDBPath } from './config/config';
+import { openDatabase, closeDatabase, pingDB } from './db/connection';
 import { runMigrations } from './db/migrations';
 import { spawnOCRWorker } from './ocr/spawn';
 import { SessionManager } from './session/manager';
@@ -9,24 +9,22 @@ import { buildServer } from './server/server';
 const PORT = parseInt(process.env['PORT'] ?? '3000', 10);
 
 async function main(): Promise<void> {
-  const config   = loadConfig();
-  const dbConfig = loadDBConfig();
+  const config = loadConfig();
+  const dbPath = loadDBPath();
 
   console.log('[Main] Config loaded');
-  console.log(`[Main] Connecting to DB at ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
-
-  const pool = createPool(dbConfig);
+  console.log(`[Main] Opening database ${dbPath}`);
 
   try {
-    await runMigrations(pool);
+    runMigrations(openDatabase(dbPath));
   } catch (err) {
     console.error('[Main] Migration failed:', (err as Error).message);
     process.exit(1);
   }
 
-  // DB health check every 30s
-  setInterval(async () => {
-    const ok = await pingDB();
+  // Database health check every 30s
+  setInterval(() => {
+    const ok = pingDB();
     if (!ok) console.warn('[Main] DB health check failed — connection may be lost');
   }, 30000);
 
@@ -38,7 +36,7 @@ async function main(): Promise<void> {
     sessionManager.stop();
     await sessionManager.close();
     await app.close();
-    await pool.end();
+    closeDatabase();
     process.exit(0);
   };
 

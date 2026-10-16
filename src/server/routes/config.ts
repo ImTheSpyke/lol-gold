@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { loadConfig, loadDBConfig, patchConfig } from '../../config/config';
+import { loadConfig, loadDBPath, patchConfig } from '../../config/config';
 import type { SessionManager } from '../../session/manager';
 import { sendError } from '../errors';
 
@@ -44,19 +44,7 @@ const ConfigPatchSchema = z.object({
 export function configRoutes(sessionManager: SessionManager) {
   return async function (app: FastifyInstance): Promise<void> {
     app.get('/', async (_req, reply) => {
-      const config   = loadConfig();
-      const dbConfig = loadDBConfig();
-      return reply.send({
-        ...config,
-        // DB credentials from env — mask password, expose connection info for dashboard display
-        db: {
-          host:     dbConfig.host,
-          port:     dbConfig.port,
-          user:     dbConfig.user,
-          password: dbConfig.password ? '***' : '',
-          database: dbConfig.database,
-        },
-      });
+      return reply.send({ ...loadConfig(), dbPath: loadDBPath() });
     });
 
     app.post('/', async (req, reply) => {

@@ -125,15 +125,6 @@
       margin: 0.75rem 0 0.4rem;
     }
 
-    .db-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-    }
-
-    .db-grid label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.25rem; }
-    .db-grid .full { grid-column: span 2; }
-
     .nav-link {
       display: inline-block;
       color: #3b82f6;
@@ -281,26 +272,10 @@
   <!-- Database Settings -->
   <div class="card">
     <h2>Database</h2>
-    <div class="db-grid">
-      <div>
-        <label>Host</label>
-        <input type="text" id="dbHost" readonly />
-      </div>
-      <div>
-        <label>Port</label>
-        <input type="number" id="dbPort" readonly />
-      </div>
-      <div>
-        <label>User</label>
-        <input type="text" id="dbUser" readonly />
-      </div>
-      <div>
-        <label>Database</label>
-        <input type="text" id="dbDatabase" readonly />
-      </div>
-    </div>
+    <label style="font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.25rem;">SQLite file</label>
+    <input type="text" id="dbPath" readonly />
     <div style="margin-top: 1rem; font-size: 0.75rem; color: #94a3b8;">
-      Configured via <code>DB_*</code> environment variables. Restart the app to apply changes.
+      Set with the <code>DB_PATH</code> environment variable. Restart the app to apply changes.
     </div>
   </div>
 
@@ -392,10 +367,7 @@
     $('redY').value  = cfg.regions.redGold.y;
     $('redW').value  = cfg.regions.redGold.width;
     $('redH').value  = cfg.regions.redGold.height;
-    $('dbHost').value     = cfg.db.host;
-    $('dbPort').value     = cfg.db.port;
-    $('dbUser').value     = cfg.db.user;
-    $('dbDatabase').value = cfg.db.database;
+    $('dbPath').value = cfg.dbPath;
   }
 
   // ── Load games ────────────────────────────────────────────────────────────
