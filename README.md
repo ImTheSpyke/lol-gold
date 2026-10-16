@@ -2,7 +2,7 @@
 
 Real-time team gold tracker for League of Legends.
 
-Once per second, lol-graph reads both teams' gold totals from the in-game scoreboard
+Once per second, lol-graph reads both teams' gold totals from the in-game top scoreboard
 using a local OCR model, saves them in a SQLite file, and shows a live gold-difference
 graph in your browser. It also exports PNGs and has overlay widgets for streaming.
 
@@ -19,11 +19,13 @@ graph in your browser. It also exports PNGs and has overlay widgets for streamin
 
 ```powershell
 npm install
-npm run dev
+npm run build
+npm run start
 ```
+Or run the file `!! START.bat`
 
-Open <http://localhost:3000>. No database server and no other setup are needed:
-the SQLite database is created automatically as `lol-graph.db` in the project folder.
+Open <http://localhost:3000>.
+On OBS <http://localhost:3000/widget/current>.
 
 ## How to use
 
@@ -40,7 +42,7 @@ the SQLite database is created automatically as `lol-graph.db` in the project fo
 | `/recent` | Recent games |
 | `/graph/<game-id>` | Live graph (add `?smooth=1` to smooth it) |
 | `/widget/<game-id>` | Graph without page chrome, for stream overlays |
-| `/widget/current` | Overlay that follows whichever game is being recorded |
+| `/widget/current` | Overlay that follows whichever game is being recorded (Use this one in OBS)|
 
 ## Commands
 
