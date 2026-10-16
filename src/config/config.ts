@@ -2,10 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-// CONFIG_DIR is bind-mounted from the host (a directory, not a file — avoids
-// the well-known Docker EISDIR gotcha where bind-mounting a non-existent file
-// causes Docker to create a directory in its place).
-// Override with CONFIG_DIR env var if needed.
+// config.json lives in CONFIG_DIR (defaults to the working directory).
 const CONFIG_DIR  = process.env['CONFIG_DIR'] ?? process.cwd();
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
 

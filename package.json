@@ -13,14 +13,7 @@
     "build": "node node_modules/tsc7/bin/tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "typecheck": "node node_modules/tsc7/bin/tsc --noEmit",
-    "test": "jest",
-    "db:up": "docker compose --profile db up -d mariadb",
-    "db:down": "docker compose --profile db stop mariadb",
-    "docker:build": "docker build -t harbor.imthespyke.fr/imthespyke/lol-graph:latest .",
-    "docker:push": "docker push harbor.imthespyke.fr/imthespyke/lol-graph:latest",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f app"
+    "test": "jest"
   },
   "dependencies": {
     "@fastify/static": "^10.1.6",

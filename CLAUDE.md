@@ -10,7 +10,6 @@ See `README.md` for setup, scripts, routes and API.
 - `npm run typecheck`: checks `src/` and `tests/` (`tsconfig.json`, no emit)
 - `npm test`: Jest via ts-jest
 - `npm run build`: emits `dist/` from `src/` only (`tsconfig.build.json`)
-- `npm run docker:build` / `docker:push`: image `harbor.imthespyke.fr/imthespyke/lol-graph:latest`
 
 ## Architecture
 
@@ -51,6 +50,4 @@ main thread                                   OCR worker thread (src/ocr/worker.
 
 ## Deployment notes
 
-`node-screenshots` needs the Win32 desktop, so live OCR only works when the app runs on the
-Windows host. The Docker image (Linux) serves dashboards/graphs with capture disabled. MariaDB
-can run via `docker compose --profile db`.
+`node-screenshots` needs the Win32 desktop, so the app only does live OCR when run directly on Windows.
